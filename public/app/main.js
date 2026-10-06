@@ -1,0 +1,697 @@
+import { COPY, INGREDIENT_LABELS, LANGUAGES, ingredientName, normalizeIngredient } from "./i18n.js";
+import { RECIPES, SAMPLE_PANTRY } from "./recipes.js";
+
+const STORAGE = {
+  language: "rasoi-language",
+  ingredients: "rasoi-ingredients",
+  saved: "rasoi-saved-recipes",
+  deviceId: "rasoi-device-id",
+};
+
+function readStored(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem(STORAGE.deviceId);
+  if (!id) {
+    id = globalThis.crypto?.randomUUID?.() ||
+      "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+        const random = Math.random() * 16 | 0;
+        return (character === "x" ? random : (random & 3 | 8)).toString(16);
+      });
+    localStorage.setItem(STORAGE.deviceId, id);
+  }
+  return id;
+}
+
+const storedIngredients = readStored(STORAGE.ingredients, null);
+const initialLanguage = readStored(STORAGE.language, "en");
+const state = {
+  language: LANGUAGES.some(({ code }) => code === initialLanguage) ? initialLanguage : "en",
+  ingredients: Array.isArray(storedIngredients) ? storedIngredients.slice(0, 20) : [...SAMPLE_PANTRY],
+  isDemo: storedIngredients === null,
+  saved: new Set(Array.isArray(readStored(STORAGE.saved, [])) ? readStored(STORAGE.saved, []) : []),
+  view: "explore",
+  selectedRecipe: null,
+  guideVisible: false,
+  guideIndex: 0,
+  guidePlaying: false,
+  promptVisible: false,
+  currentPrompt: "",
+  cloudEnabled: false,
+  cloudSynced: false,
+  syncWarningShown: false,
+};
+
+const $ = (selector) => document.querySelector(selector);
+const copy = () => COPY[state.language] || COPY.en;
+let toastTimer;
+let guideTimer;
+let syncTimer;
+
+function t(key, values = {}) {
+  const template = copy()[key] ?? COPY.en[key] ?? key;
+  return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function recipeText(recipe) {
+  return recipe.text[state.language] || recipe.text.en;
+}
+
+function getRecipeMatch(recipe) {
+  const available = recipe.ingredients.filter((item) => state.ingredients.includes(item));
+  const missing = recipe.ingredients.filter((item) => !state.ingredients.includes(item));
+  return {
+    available,
+    missing,
+    percent: recipe.ingredients.length ? Math.round(available.length / recipe.ingredients.length * 100) : 0,
+  };
+}
+
+function setLanguage(language, announce = true) {
+  if (!LANGUAGES.some(({ code }) => code === language)) return;
+  state.language = language;
+  persist();
+  render();
+  if (announce) {
+    const languageName = LANGUAGES.find(({ code }) => code === language)?.native || language;
+    showToast(t("toastLanguage", { language: languageName }));
+  }
+}
+
+function persist(sync = true) {
+  try {
+    localStorage.setItem(STORAGE.language, JSON.stringify(state.language));
+    localStorage.setItem(STORAGE.ingredients, JSON.stringify(state.ingredients));
+    localStorage.setItem(STORAGE.saved, JSON.stringify([...state.saved]));
+  } catch {
+    showToast(t("toastSync"));
+  }
+  if (sync && state.cloudEnabled) {
+    window.clearTimeout(syncTimer);
+    syncTimer = window.setTimeout(syncPreferences, 450);
+  }
+}
+
+function showToast(message) {
+  const toast = $("#toast");
+  toast.textContent = message;
+  toast.classList.add("visible");
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 2800);
+}
+
+function setText(id, value) {
+  const node = document.getElementById(id);
+  if (node) node.textContent = value;
+}
+
+function renderLanguageOptions() {
+  const select = $("#languageSelect");
+  select.innerHTML = LANGUAGES.map(({ code, native, name }) =>
+    `<option value="${code}">${escapeHtml(native)} · ${escapeHtml(name)}</option>`
+  ).join("");
+  select.value = state.language;
+  select.setAttribute("aria-label", t("language"));
+  $("#languageLabel").textContent = t("language");
+}
+
+function renderStaticCopy() {
+  const values = {
+    brandTag: "brandTag",
+    navExplore: "navExplore",
+    navSavedText: "navSaved",
+    heroKicker: "heroKicker",
+    heroTitle: "heroTitle",
+    heroDescription: "heroDescription",
+    heroLink: "heroLink",
+    heroSticker: "heroSticker",
+    pantryEyebrow: "pantryEyebrow",
+    pantryTitle: "pantryTitle",
+    pantryDescription: "pantryDescription",
+    ingredientLabel: "ingredientLabel",
+    sampleButtonText: "sampleButton",
+    pantryListLabel: "pantryListLabel",
+    recipeEyebrow: "recipeEyebrow",
+    recipeHeading: state.view === "saved" ? "navSaved" : "recipeTitle",
+    recipeDescription: "recipeDescription",
+    emptyTitle: state.view === "saved" ? "emptySavedTitle" : "emptyTitle",
+    emptyDescription: state.view === "saved" ? "emptySavedDescription" : "emptyDescription",
+    emptySampleButton: "loadSample",
+    footerCopy: "footerCopy",
+    footerNote: "footerNote",
+  };
+  for (const [id, key] of Object.entries(values)) setText(id, t(key));
+  setText("ingredientInput", "");
+  $("#ingredientInput").placeholder = t("ingredientPlaceholder");
+  $("#addIngredientButton").setAttribute("aria-label", t("addIngredient"));
+  $("#clearButton").textContent = t("clear");
+  $("#findRecipesText").textContent = t("findRecipes");
+  $("#syncLabel").textContent = state.cloudSynced ? t("syncCloud") : t("syncLocal");
+  $("#recipeGrid").setAttribute("aria-label", t(state.view === "saved" ? "navSaved" : "recipeTitle"));
+  $("#navExplore").classList.toggle("active", state.view === "explore");
+  $("#navSaved").classList.toggle("active", state.view === "saved");
+  $("#navExplore").setAttribute("aria-pressed", String(state.view === "explore"));
+  $("#navSaved").setAttribute("aria-pressed", String(state.view === "saved"));
+  $("#savedCount").textContent = String(state.saved.size);
+  $("#savedCount").setAttribute("aria-label", t("navSaved"));
+  $("#emptySampleButton").hidden = state.view === "saved";
+  document.documentElement.lang = state.language;
+  document.title = `Rasoi · ${t(state.view === "saved" ? "navSaved" : "recipeTitle")}`;
+}
+
+function renderPantry() {
+  $("#pantryCount").textContent = t("pantryCount", { count: state.ingredients.length });
+  $("#demoNote").textContent = state.isDemo ? t("sampleBadge") : "";
+  $("#ingredientChips").innerHTML = state.ingredients.length
+    ? state.ingredients.map((item) => {
+      const label = ingredientName(item, state.language);
+      return `<span class="ingredient-chip">
+        <span>${escapeHtml(label)}</span>
+        <button class="chip-remove" type="button" data-action="remove-ingredient" data-value="${escapeHtml(item)}" aria-label="${escapeHtml(t("toastRemoved", { ingredient: label }))}">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </span>`;
+    }).join("")
+    : `<p class="pantry-empty">${escapeHtml(t("pantryEmpty"))}</p>`;
+}
+
+function renderRecipes() {
+  const ranked = RECIPES
+    .filter((recipe) => state.view !== "saved" || state.saved.has(recipe.id))
+    .map((recipe) => ({ recipe, match: getRecipeMatch(recipe) }))
+    .sort((a, b) => b.match.available.length - a.match.available.length || b.match.percent - a.match.percent);
+  const shown = state.view === "saved" ? ranked : ranked.slice(0, 3);
+
+  $("#recipeHeading").textContent = t(state.view === "saved" ? "navSaved" : "recipeTitle");
+  $("#resultsNote").textContent = t("resultsNote", { count: shown.length });
+  $("#emptyState").hidden = shown.length > 0;
+  $("#recipeGrid").hidden = shown.length === 0;
+
+  if (!shown.length) return;
+  $("#recipeGrid").innerHTML = shown.map(({ recipe, match }) => {
+    const text = recipeText(recipe);
+    const isSaved = state.saved.has(recipe.id);
+    const ingredientPills = match.available.slice(0, 4).map((item) =>
+      `<span class="mini-ingredient">${escapeHtml(ingredientName(item, state.language))}</span>`
+    ).join("");
+    const moreCount = Math.max(0, match.available.length - 4);
+    const missingText = match.missing.length
+      ? `${escapeHtml(t("missingLabel"))}: ${escapeHtml(match.missing.slice(0, 2).map((item) => ingredientName(item, state.language)).join(", "))}${match.missing.length > 2 ? "…" : ""}`
+      : escapeHtml(t("availableLabel"));
+    return `<article class="recipe-card">
+      <div class="recipe-image-wrap">
+        <img class="recipe-image" src="${recipe.image}" alt="${escapeHtml(text.name)}" loading="lazy" />
+        <span class="match-badge"><span class="match-dot"></span>${match.percent}% ${escapeHtml(t("match"))}</span>
+        <button class="save-button${isSaved ? " is-saved" : ""}" type="button" data-action="toggle-save" data-value="${recipe.id}" aria-label="${escapeHtml(t(isSaved ? "unsave" : "save"))}" aria-pressed="${isSaved}">
+          <svg viewBox="0 0 24 24" fill="${isSaved ? "currentColor" : "none"}" aria-hidden="true"><path d="M12 20.2s-7.5-4.4-9.2-9.1C1.1 6.3 7.2 3.1 12 8c4.8-4.9 10.9-1.7 9.2 3.1-1.7 4.7-9.2 9.1-9.2 9.1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="recipe-card-body">
+        <div class="recipe-meta"><span>${escapeHtml(text.cuisine)}</span><span class="meta-dot">·</span><span>${recipe.minutes} ${escapeHtml(t("minutes"))}</span></div>
+        <h3>${escapeHtml(text.name)}</h3>
+        <p class="recipe-description">${escapeHtml(text.description)}</p>
+        <div class="recipe-match-row">${ingredientPills}${moreCount ? `<span class="mini-ingredient more-count">+${moreCount}</span>` : ""}</div>
+        <p class="missing-note">${missingText}</p>
+        <button class="open-recipe-button" type="button" data-action="open-recipe" data-value="${recipe.id}">
+          <span>${escapeHtml(t("detail"))}</span>
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function renderGuide(recipe) {
+  const text = recipeText(recipe);
+  const match = getRecipeMatch(recipe);
+  const steps = text.steps;
+  const safeIndex = Math.min(state.guideIndex, steps.length - 1);
+  const currentStep = steps[safeIndex];
+  const prompt = buildVideoPrompt(recipe, match);
+  state.currentPrompt = prompt;
+  return `<section class="video-feature" aria-labelledby="guideHeading">
+    <div class="video-intro">
+      <div class="video-poster">
+        <img src="${recipe.image}" alt="" />
+        <div class="poster-shade"></div>
+        <span class="poster-play" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="m9 6 10 6-10 6V6Z" fill="currentColor"/></svg>
+        </span>
+        <span class="poster-label">${escapeHtml(t("guideTitle"))}</span>
+        <span class="poster-duration">${recipe.minutes} ${escapeHtml(t("minutes"))}</span>
+      </div>
+      <div class="video-copy">
+        <p class="eyebrow">${escapeHtml(t("guideTitle"))}</p>
+        <h3 id="guideHeading">${escapeHtml(t("watchVideo"))}</h3>
+        <p class="video-status"><span class="status-mark">i</span>${escapeHtml(t("videoUnavailable"))}</p>
+        <p class="video-fallback-copy">${escapeHtml(t("videoFallback"))}</p>
+        <div class="video-actions">
+          <button class="primary-button" type="button" data-action="watch-video">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4.5 9 5.5-9 5.5v-11Z" fill="currentColor"/></svg>
+            <span>${escapeHtml(t("watchVideo"))}</span>
+          </button>
+          <button class="secondary-button" type="button" data-action="generate-video">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m10 2 1.6 5.1L17 9l-5.4 1.9L10 16l-1.6-5.1L3 9l5.4-1.9L10 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="m16 13 .8 2.1L19 16l-2.2.8L16 19l-.8-2.2L13 16l2.2-.9L16 13Z" fill="currentColor"/></svg>
+            <span>${escapeHtml(t("generateVideo"))}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    ${state.guideVisible ? `<div class="guide-player" id="guidePlayer">
+      <div class="guide-screen">
+        <img src="${recipe.image}" alt="" />
+        <div class="guide-overlay"></div>
+        <div class="guide-screen-top"><span>${escapeHtml(text.name)}</span><button type="button" data-action="fullscreen" aria-label="${escapeHtml(t("fullscreen"))}" title="${escapeHtml(t("fullscreen"))}"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        <span class="guide-step-count">${escapeHtml(t("step"))} ${safeIndex + 1} ${escapeHtml(t("of"))} ${steps.length}</span>
+        <div class="guide-step-copy">
+          <span class="step-kicker">${escapeHtml(t("videoStepPrep"))} · ${String(safeIndex + 1).padStart(2, "0")}</span>
+          <h4>${escapeHtml(currentStep[0])}</h4>
+          <p>${escapeHtml(currentStep[1])}</p>
+        </div>
+        <div class="guide-progress"><span style="width:${((safeIndex + 1) / steps.length) * 100}%"></span></div>
+      </div>
+      <div class="guide-controls">
+        <button class="guide-play-button" type="button" data-action="toggle-guide" aria-label="${escapeHtml(t(state.guidePlaying ? "pauseGuide" : "startGuide"))}">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">${state.guidePlaying ? '<path d="M7 5v10m6-10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="m7 4.5 9 5.5-9 5.5v-11Z" fill="currentColor"/>'}</svg>
+        </button>
+        <div class="guide-step-label">${escapeHtml(currentStep[0])}<span>${safeIndex + 1} / ${steps.length}</span></div>
+        <div class="guide-step-buttons">
+          <button class="circle-button" type="button" data-action="guide-prev" aria-label="${escapeHtml(t("previousStep"))}" ${safeIndex === 0 ? "disabled" : ""}>
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H5m4 4-4-4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="circle-button" type="button" data-action="guide-next" aria-label="${escapeHtml(t("nextStep"))}" ${safeIndex === steps.length - 1 ? "disabled" : ""}>
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>` : ""}
+    ${state.promptVisible ? `<div class="prompt-panel">
+      <div class="prompt-heading">
+        <div><h4>${escapeHtml(t("promptTitle"))}</h4><p>${escapeHtml(t("promptDescription"))}</p></div>
+        <button class="copy-button" type="button" data-action="copy-prompt">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.4"/></svg>
+          <span>${escapeHtml(t("copyPrompt"))}</span>
+        </button>
+      </div>
+      <textarea class="prompt-text" id="promptText" readonly rows="5" aria-label="${escapeHtml(t("promptTitle"))}">${escapeHtml(prompt)}</textarea>
+    </div>` : ""}
+  </section>`;
+}
+
+function buildVideoPrompt(recipe, match) {
+  const text = recipeText(recipe);
+  const available = match.available.length
+    ? match.available.map((item) => ingredientName(item, state.language)).join(", ")
+    : t("pantryEmpty");
+  const missing = match.missing.map((item) => ingredientName(item, state.language)).join(", ");
+  const stepTitles = text.steps.map(([title], index) => `${index + 1}. ${title}`).join("; ");
+  const language = LANGUAGES.find(({ code }) => code === state.language)?.native || "English";
+  return [
+    t("promptRecipe", { recipe: text.name }),
+    t("promptLanguage", { language }),
+    t("promptAvailable", { ingredients: available }),
+    missing ? t("promptMissing", { ingredients: missing }) : t("promptNoMissing"),
+    t("promptContext", { cuisine: text.cuisine, method: text.method }),
+    t("promptSteps", { steps: stepTitles }),
+    t("promptPlating"),
+  ].join(" ");
+}
+
+function renderDetails() {
+  const section = $("#recipeDetails");
+  const recipe = RECIPES.find(({ id }) => id === state.selectedRecipe);
+  if (!recipe) {
+    section.hidden = true;
+    section.innerHTML = "";
+    return;
+  }
+
+  section.hidden = false;
+  const text = recipeText(recipe);
+  const match = getRecipeMatch(recipe);
+  const isSaved = state.saved.has(recipe.id);
+  const ingredientsHtml = recipe.ingredients.map((item) => {
+    const available = state.ingredients.includes(item);
+    return `<li class="${available ? "is-available" : "is-missing"}">
+      <span class="ingredient-check" aria-hidden="true">${available ? "✓" : "+"}</span>
+      <span>${escapeHtml(ingredientName(item, state.language))}</span>
+      <span class="ingredient-state">${escapeHtml(available ? t("availableLabel") : t("missingLabel"))}</span>
+    </li>`;
+  }).join("");
+  const stepsHtml = text.steps.map(([title, description], index) =>
+    `<li class="instruction-step">
+      <span class="instruction-number">${String(index + 1).padStart(2, "0")}</span>
+      <div><h4>${escapeHtml(title)}</h4><p>${escapeHtml(description)}</p></div>
+    </li>`
+  ).join("");
+
+  section.innerHTML = `<div class="detail-topline">
+      <p class="eyebrow">${escapeHtml(t("recipeEyebrow"))}</p>
+      <button class="close-detail" type="button" data-action="close-recipe">
+        <span>${escapeHtml(t("closeDetail"))}</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="detail-heading">
+      <div><h2>${escapeHtml(text.name)}</h2><p>${escapeHtml(text.description)}</p></div>
+      <button class="secondary-button detail-save${isSaved ? " saved" : ""}" type="button" data-action="toggle-save" data-value="${recipe.id}" aria-pressed="${isSaved}">
+        <svg viewBox="0 0 20 20" fill="${isSaved ? "currentColor" : "none"}" aria-hidden="true"><path d="M10 17s-6.3-3.7-7.7-7.6C.9 5.5 6 2.8 10 6.9c4-4.1 9.1-1.4 7.7 2.5C16.3 13.3 10 17 10 17Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span>${escapeHtml(t(isSaved ? "unsave" : "save"))}</span>
+      </button>
+    </div>
+    <div class="detail-facts">
+      <span>${escapeHtml(text.cuisine)}</span><span>${escapeHtml(text.method)}</span><span>${recipe.minutes} ${escapeHtml(t("minutes"))}</span><span>${escapeHtml(t("servings"))}</span>
+    </div>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <section class="detail-block">
+          <div class="detail-block-heading"><h3>${escapeHtml(t("ingredients"))}</h3><span>${match.available.length}/${recipe.ingredients.length}</span></div>
+          <ul class="detail-ingredients">${ingredientsHtml}</ul>
+        </section>
+        <section class="detail-block instructions-block">
+          <div class="detail-block-heading"><h3>${escapeHtml(t("steps"))}</h3><span>${text.steps.length} ${escapeHtml(t("step"))}</span></div>
+          <ol class="instruction-list">${stepsHtml}</ol>
+        </section>
+      </div>
+      <aside class="detail-aside">
+        <img class="detail-image" src="${recipe.image}" alt="${escapeHtml(text.name)}" />
+        <div class="detail-aside-copy">
+          <span class="aside-kicker">${escapeHtml(t("method"))}</span>
+          <h3>${escapeHtml(text.method)}</h3>
+          <p>${recipe.minutes} ${escapeHtml(t("minutes"))} · ${escapeHtml(t("servings"))}</p>
+        </div>
+      </aside>
+    </div>
+    ${renderGuide(recipe)}
+  `;
+}
+
+function render() {
+  renderLanguageOptions();
+  renderStaticCopy();
+  renderPantry();
+  renderRecipes();
+  renderDetails();
+}
+
+function addIngredient(value) {
+  const raw = value.trim().replace(/\s+/g, " ");
+  if (!raw) {
+    showToast(t("toastRequired"));
+    return;
+  }
+  const normalized = normalizeIngredient(raw);
+  if (state.ingredients.includes(normalized)) {
+    showToast(t("toastDuplicate"));
+    return;
+  }
+  if (state.ingredients.length >= 20) {
+    showToast(t("toastLimit"));
+    return;
+  }
+  state.ingredients.push(normalized);
+  state.isDemo = false;
+  state.view = "explore";
+  persist();
+  render();
+  showToast(t("toastAdded", { ingredient: ingredientName(normalized, state.language) }));
+}
+
+function loadSamplePantry() {
+  state.ingredients = [...SAMPLE_PANTRY];
+  state.isDemo = true;
+  state.view = "explore";
+  state.selectedRecipe = null;
+  persist();
+  render();
+  showToast(t("toastSample"));
+}
+
+function openRecipe(id) {
+  if (!RECIPES.some((recipe) => recipe.id === id)) return;
+  state.selectedRecipe = id;
+  state.guideVisible = false;
+  state.guideIndex = 0;
+  state.guidePlaying = false;
+  state.promptVisible = false;
+  render();
+  $("#recipeDetails").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function toggleSave(id) {
+  if (state.saved.has(id)) {
+    state.saved.delete(id);
+    showToast(t("toastUnsaved"));
+  } else {
+    state.saved.add(id);
+    showToast(t("toastSaved"));
+  }
+  persist(false);
+  render();
+}
+
+function toggleGuidePlayback() {
+  const recipe = RECIPES.find(({ id }) => id === state.selectedRecipe);
+  if (!recipe) return;
+  if (state.guidePlaying) {
+    state.guidePlaying = false;
+    window.clearInterval(guideTimer);
+    renderDetails();
+    return;
+  }
+  if (state.guideIndex >= recipeText(recipe).steps.length - 1) state.guideIndex = 0;
+  state.guidePlaying = true;
+  renderDetails();
+  guideTimer = window.setInterval(() => {
+    const current = RECIPES.find(({ id }) => id === state.selectedRecipe);
+    if (!current) {
+      window.clearInterval(guideTimer);
+      return;
+    }
+    if (state.guideIndex >= recipeText(current).steps.length - 1) {
+      state.guidePlaying = false;
+      window.clearInterval(guideTimer);
+    } else {
+      state.guideIndex += 1;
+    }
+    renderDetails();
+  }, 4200);
+}
+
+function moveGuide(amount) {
+  const recipe = RECIPES.find(({ id }) => id === state.selectedRecipe);
+  if (!recipe) return;
+  window.clearInterval(guideTimer);
+  state.guidePlaying = false;
+  state.guideIndex = Math.max(0, Math.min(recipeText(recipe).steps.length - 1, state.guideIndex + amount));
+  renderDetails();
+}
+
+async function copyPrompt() {
+  const prompt = $("#promptText")?.value || state.currentPrompt;
+  try {
+    await navigator.clipboard.writeText(prompt);
+    showToast(t("toastCopied"));
+  } catch {
+    const textarea = $("#promptText");
+    textarea?.select();
+    const copied = document.execCommand?.("copy");
+    showToast(copied ? t("toastCopied") : t("toastCopyError"));
+  }
+}
+
+document.addEventListener("click", async (event) => {
+  const actionButton = event.target.closest("[data-action], [data-view]");
+  if (!actionButton) return;
+
+  if (actionButton.dataset.view) {
+    state.view = actionButton.dataset.view;
+    render();
+    $("#recipeHeading").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const { action, value } = actionButton.dataset;
+  switch (action) {
+    case "remove-ingredient": {
+      state.ingredients = state.ingredients.filter((item) => item !== value);
+      state.isDemo = false;
+      persist();
+      render();
+      showToast(t("toastRemoved", { ingredient: ingredientName(value, state.language) }));
+      break;
+    }
+    case "sample":
+      loadSamplePantry();
+      break;
+    case "clear":
+      state.ingredients = [];
+      state.isDemo = false;
+      persist();
+      render();
+      showToast(t("toastCleared"));
+      break;
+    case "find":
+      if (!state.ingredients.length) {
+        showToast(t("toastNoResults"));
+        return;
+      }
+      state.view = "explore";
+      render();
+      $("#recipeHeading").scrollIntoView({ behavior: "smooth", block: "start" });
+      break;
+    case "open-recipe":
+      openRecipe(value);
+      break;
+    case "toggle-save":
+      toggleSave(value);
+      break;
+    case "close-recipe":
+      state.selectedRecipe = null;
+      state.guideVisible = false;
+      state.promptVisible = false;
+      state.guidePlaying = false;
+      window.clearInterval(guideTimer);
+      render();
+      $("#pantry").scrollIntoView({ behavior: "smooth", block: "start" });
+      break;
+    case "watch-video":
+      state.guideVisible = true;
+      state.guideIndex = 0;
+      state.guidePlaying = false;
+      renderDetails();
+      $("#guidePlayer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      break;
+    case "generate-video":
+      state.guideVisible = true;
+      state.guideIndex = 0;
+      state.guidePlaying = false;
+      state.promptVisible = true;
+      renderDetails();
+      $("#promptText")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      break;
+    case "toggle-guide":
+      toggleGuidePlayback();
+      break;
+    case "guide-prev":
+      moveGuide(-1);
+      break;
+    case "guide-next":
+      moveGuide(1);
+      break;
+    case "copy-prompt":
+      await copyPrompt();
+      break;
+    case "fullscreen": {
+      const screen = $(".guide-screen");
+      if (screen?.requestFullscreen) {
+        try {
+          await screen.requestFullscreen();
+        } catch {
+          screen.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      break;
+    }
+  }
+});
+
+$("#languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
+
+$("#ingredientForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const input = $("#ingredientInput");
+  addIngredient(input.value);
+  input.value = "";
+  input.focus();
+});
+
+$("#sampleButton").addEventListener("click", loadSamplePantry);
+$("#emptySampleButton").addEventListener("click", loadSamplePantry);
+$("#clearButton").addEventListener("click", () => {
+  state.ingredients = [];
+  state.isDemo = false;
+  persist();
+  render();
+  showToast(t("toastCleared"));
+});
+$("#findRecipesButton").addEventListener("click", () => {
+  if (!state.ingredients.length) {
+    showToast(t("toastNoResults"));
+    return;
+  }
+  state.view = "explore";
+  render();
+  $("#recipeHeading").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+async function syncPreferences() {
+  try {
+    const response = await fetch(`/api/preferences?deviceId=${encodeURIComponent(getDeviceId())}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ language: state.language, ingredients: state.ingredients }),
+    });
+    if (!response.ok) throw new Error("Sync failed");
+    state.cloudSynced = true;
+    $("#syncLabel").textContent = t("syncCloud");
+  } catch {
+    state.cloudEnabled = false;
+    state.cloudSynced = false;
+    $("#syncLabel").textContent = t("syncLocal");
+    if (!state.syncWarningShown) {
+      state.syncWarningShown = true;
+      showToast(t("toastSync"));
+    }
+  }
+}
+
+async function initializeCloudSync() {
+  try {
+    const configResponse = await fetch("/api/config", { cache: "no-store" });
+    const config = await configResponse.json();
+    if (!configResponse.ok || !config.supabaseEnabled) return;
+    state.cloudEnabled = true;
+
+    const response = await fetch(`/api/preferences?deviceId=${encodeURIComponent(getDeviceId())}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load preferences");
+    const result = await response.json();
+    const preferences = result.preferences;
+    if (preferences && LANGUAGES.some(({ code }) => code === preferences.language) && Array.isArray(preferences.ingredients)) {
+      state.language = preferences.language;
+      state.ingredients = preferences.ingredients
+        .filter((item) => typeof item === "string")
+        .slice(0, 20);
+      state.isDemo = false;
+      state.cloudSynced = true;
+      persist(false);
+      render();
+      $("#syncLabel").textContent = t("syncCloud");
+    } else {
+      await syncPreferences();
+    }
+  } catch {
+    state.cloudEnabled = false;
+    state.cloudSynced = false;
+    $("#syncLabel").textContent = t("syncLocal");
+  }
+}
+
+render();
+initializeCloudSync();
