@@ -144,6 +144,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .input-row input::placeholder { color: #a3a79e; }
 .input-row input:focus { border-color: #86a18a; box-shadow: 0 0 0 3px rgba(49, 93, 70, .08); outline: 0; }
+.search-row { position: relative; }
+.search-row .search-icon { position: absolute; left: 12px; width: 17px; height: 17px; color: #8a9689; pointer-events: none; }
+.search-row input { padding-left: 37px; }
+.picker-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 15px 0 8px; color: #788079; font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+.picker-count { padding: 3px 7px; border-radius: 20px; color: #758471; background: #edf1e9; font-size: 8px; letter-spacing: 0; }
+.ingredient-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(34px, auto); gap: 6px; max-height: 218px; overflow-y: auto; padding: 1px 3px 2px 1px; scrollbar-color: #c9d3c6 transparent; scrollbar-width: thin; }
+.ingredient-option { min-width: 0; display: flex; align-items: center; gap: 5px; padding: 5px 6px; border: 1px solid #e8e6dc; border-radius: 8px; color: #667166; background: #fffefa; text-align: left; font-size: 9px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: color .15s ease, border-color .15s ease, background .15s ease, transform .15s ease; }
+.ingredient-option:hover { border-color: #afc3ad; color: #395a40; transform: translateY(-1px); }
+.ingredient-option.is-selected { border-color: #bdd0bb; color: #365d3f; background: #edf4e9; }
+.option-indicator { width: 16px; height: 16px; display: grid; flex: 0 0 16px; place-items: center; border: 1px solid #dddcd1; border-radius: 5px; color: #839080; background: #fff; }
+.ingredient-option.is-selected .option-indicator { border-color: #6d946c; color: #fff; background: #6d946c; }
+.option-indicator svg { width: 12px; height: 12px; }
+.picker-empty { margin: 10px 0 0; color: #999d95; font-size: 10px; line-height: 1.5; }
+.picker-empty[hidden] { display: none; }
 .icon-add { display: grid; flex: 0 0 43px; place-items: center; width: 43px; height: 43px; border: 0; border-radius: 10px; color: #fff; background: var(--green); cursor: pointer; transition: background .2s ease, transform .2s ease; }
 .icon-add:hover { background: var(--green-dark); transform: translateY(-1px); }
 .icon-add svg { width: 20px; height: 20px; }

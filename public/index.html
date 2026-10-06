@@ -89,18 +89,22 @@
             </div>
             <p class="panel-description" id="pantryDescription"></p>
 
-            <form id="ingredientForm" class="ingredient-form">
-              <label class="input-label" for="ingredientInput" id="ingredientLabel"></label>
-              <div class="input-row">
-                <input id="ingredientInput" type="text" autocomplete="off" maxlength="80" />
-                <button class="icon-add" type="submit" id="addIngredientButton" aria-label="Add ingredient">
-                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                </button>
+            <div class="ingredient-form">
+              <label class="input-label" for="ingredientSearch" id="ingredientLabel"></label>
+              <div class="input-row search-row">
+                <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.4" stroke="currentColor" stroke-width="1.5"/><path d="m12.8 12.8 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <input id="ingredientSearch" type="search" autocomplete="off" maxlength="60" />
               </div>
+              <div class="picker-heading">
+                <span id="ingredientOptionsLabel"></span>
+                <span class="picker-count" id="ingredientOptionCount"></span>
+              </div>
+              <div class="ingredient-picker" id="ingredientPicker" role="group"></div>
+              <p class="picker-empty" id="pickerEmpty" hidden></p>
               <button class="sample-button" id="sampleButton" type="button">
                 <span class="sample-spark">✳</span><span id="sampleButtonText"></span>
               </button>
-            </form>
+            </div>
 
             <div class="pantry-list-heading">
               <span id="pantryListLabel"></span>

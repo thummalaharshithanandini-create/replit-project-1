@@ -1,4 +1,4 @@
-import { COPY, INGREDIENT_LABELS, LANGUAGES, ingredientName, normalizeIngredient } from "./i18n.js";
+import { COPY, INGREDIENT_LABELS, LANGUAGES, ingredientName } from "./i18n.js";
 import { RECIPES, SAMPLE_PANTRY } from "./recipes.js";
 
 const STORAGE = {
@@ -34,8 +34,9 @@ const storedIngredients = readStored(STORAGE.ingredients, null);
 const initialLanguage = readStored(STORAGE.language, "en");
 const state = {
   language: LANGUAGES.some(({ code }) => code === initialLanguage) ? initialLanguage : "en",
-  ingredients: Array.isArray(storedIngredients) ? storedIngredients.slice(0, 20) : [...SAMPLE_PANTRY],
-  isDemo: storedIngredients === null,
+  ingredients: Array.isArray(storedIngredients) ? storedIngredients.slice(0, 20) : [],
+  isDemo: false,
+  ingredientQuery: "",
   saved: new Set(Array.isArray(readStored(STORAGE.saved, [])) ? readStored(STORAGE.saved, []) : []),
   view: "explore",
   selectedRecipe: null,
@@ -87,6 +88,7 @@ function getRecipeMatch(recipe) {
 function setLanguage(language, announce = true) {
   if (!LANGUAGES.some(({ code }) => code === language)) return;
   state.language = language;
+  state.ingredientQuery = "";
   persist();
   render();
   if (announce) {
@@ -146,6 +148,7 @@ function renderStaticCopy() {
     pantryTitle: "pantryTitle",
     pantryDescription: "pantryDescription",
     ingredientLabel: "ingredientLabel",
+    ingredientOptionsLabel: "ingredientOptionsLabel",
     sampleButtonText: "sampleButton",
     pantryListLabel: "pantryListLabel",
     recipeEyebrow: "recipeEyebrow",
@@ -158,9 +161,8 @@ function renderStaticCopy() {
     footerNote: "footerNote",
   };
   for (const [id, key] of Object.entries(values)) setText(id, t(key));
-  setText("ingredientInput", "");
-  $("#ingredientInput").placeholder = t("ingredientPlaceholder");
-  $("#addIngredientButton").setAttribute("aria-label", t("addIngredient"));
+  $("#ingredientSearch").placeholder = t("ingredientPlaceholder");
+  $("#ingredientSearch").value = state.ingredientQuery;
   $("#clearButton").textContent = t("clear");
   $("#findRecipesText").textContent = t("findRecipes");
   $("#syncLabel").textContent = state.cloudSynced ? t("syncCloud") : t("syncLocal");
@@ -174,6 +176,38 @@ function renderStaticCopy() {
   $("#emptySampleButton").hidden = state.view === "saved";
   document.documentElement.lang = state.language;
   document.title = `Rasoi · ${t(state.view === "saved" ? "navSaved" : "recipeTitle")}`;
+}
+
+function renderPicker() {
+  const picker = $("#ingredientPicker");
+  const previousScrollTop = picker.scrollTop;
+  const options = Object.keys(INGREDIENT_LABELS);
+  const query = state.ingredientQuery.trim().toLocaleLowerCase();
+  const filtered = options.filter((key) => {
+    if (!query) return true;
+    const item = INGREDIENT_LABELS[key];
+    return ingredientName(key, state.language).toLocaleLowerCase().includes(query) ||
+      item.en.toLocaleLowerCase().includes(query) ||
+      item.aliases.some((alias) => alias.toLocaleLowerCase().includes(query));
+  });
+
+  picker.setAttribute("aria-label", t("ingredientOptionsLabel"));
+  $("#ingredientOptionCount").textContent = t("ingredientOptionCount", { count: options.length });
+  $("#pickerEmpty").textContent = t("pickerNoResults");
+  $("#pickerEmpty").hidden = filtered.length > 0;
+  picker.innerHTML = filtered.map((key) => {
+    const selected = state.ingredients.includes(key);
+    return `<button class="ingredient-option${selected ? " is-selected" : ""}" type="button"
+      data-action="toggle-ingredient" data-value="${key}" aria-pressed="${selected}">
+      <span class="option-indicator" aria-hidden="true">
+        ${selected
+          ? '<svg viewBox="0 0 16 16" fill="none"><path d="m3.5 8.3 2.7 2.7 6.3-6.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          : '<svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'}
+      </span>
+      <span>${escapeHtml(ingredientName(key, state.language))}</span>
+    </button>`;
+  }).join("");
+  picker.scrollTop = previousScrollTop;
 }
 
 function renderPantry() {
@@ -197,7 +231,11 @@ function renderRecipes() {
     .filter((recipe) => state.view !== "saved" || state.saved.has(recipe.id))
     .map((recipe) => ({ recipe, match: getRecipeMatch(recipe) }))
     .sort((a, b) => b.match.available.length - a.match.available.length || b.match.percent - a.match.percent);
-  const shown = state.view === "saved" ? ranked : ranked.slice(0, 3);
+  const shown = state.view === "saved"
+    ? ranked
+    : state.ingredients.length
+      ? ranked.slice(0, 3)
+      : [];
 
   $("#recipeHeading").textContent = t(state.view === "saved" ? "navSaved" : "recipeTitle");
   $("#resultsNote").textContent = t("resultsNote", { count: shown.length });
@@ -405,37 +443,40 @@ function renderDetails() {
 function render() {
   renderLanguageOptions();
   renderStaticCopy();
+  renderPicker();
   renderPantry();
   renderRecipes();
   renderDetails();
 }
 
-function addIngredient(value) {
-  const raw = value.trim().replace(/\s+/g, " ");
-  if (!raw) {
-    showToast(t("toastRequired"));
-    return;
-  }
-  const normalized = normalizeIngredient(raw);
-  if (state.ingredients.includes(normalized)) {
-    showToast(t("toastDuplicate"));
+function toggleIngredient(ingredient) {
+  const restoreFocus = document.activeElement?.closest?.(".ingredient-option")?.dataset.value;
+  if (state.ingredients.includes(ingredient)) {
+    state.ingredients = state.ingredients.filter((item) => item !== ingredient);
+    state.isDemo = false;
+    persist();
+    render();
+    if (restoreFocus) requestAnimationFrame(() => $(`#ingredientPicker [data-value="${restoreFocus}"]`)?.focus({ preventScroll: true }));
+    showToast(t("toastRemoved", { ingredient: ingredientName(ingredient, state.language) }));
     return;
   }
   if (state.ingredients.length >= 20) {
     showToast(t("toastLimit"));
     return;
   }
-  state.ingredients.push(normalized);
+  state.ingredients.push(ingredient);
   state.isDemo = false;
   state.view = "explore";
   persist();
   render();
-  showToast(t("toastAdded", { ingredient: ingredientName(normalized, state.language) }));
+  if (restoreFocus) requestAnimationFrame(() => $(`#ingredientPicker [data-value="${restoreFocus}"]`)?.focus({ preventScroll: true }));
+  showToast(t("toastAdded", { ingredient: ingredientName(ingredient, state.language) }));
 }
 
 function loadSamplePantry() {
   state.ingredients = [...SAMPLE_PANTRY];
   state.isDemo = true;
+  state.ingredientQuery = "";
   state.view = "explore";
   state.selectedRecipe = null;
   persist();
@@ -537,6 +578,9 @@ document.addEventListener("click", async (event) => {
       showToast(t("toastRemoved", { ingredient: ingredientName(value, state.language) }));
       break;
     }
+    case "toggle-ingredient":
+      toggleIngredient(value);
+      break;
     case "sample":
       loadSamplePantry();
       break;
@@ -614,12 +658,9 @@ document.addEventListener("click", async (event) => {
 
 $("#languageSelect").addEventListener("change", (event) => setLanguage(event.target.value));
 
-$("#ingredientForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const input = $("#ingredientInput");
-  addIngredient(input.value);
-  input.value = "";
-  input.focus();
+$("#ingredientSearch").addEventListener("input", (event) => {
+  state.ingredientQuery = event.target.value;
+  renderPicker();
 });
 
 $("#sampleButton").addEventListener("click", loadSamplePantry);
