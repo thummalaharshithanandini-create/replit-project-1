@@ -1,0 +1,92 @@
+# AI COOKING VIDEO GENERATION
+
+Add an **"AI Cooking Video"** feature to every generated recipe.
+
+The video should demonstrate how to prepare the selected recipe using the **same ingredients that the user provided**.
+
+Example:
+
+User enters:
+
+* Tomato
+* Onion
+* Potato
+* Green Chilli
+* Salt
+* Oil
+
+The application recommends:
+
+**Potato Tomato Curry**
+
+When the user clicks:
+
+🎥 **Watch AI Cooking Video**
+
+Generate or display a short cooking video demonstrating:
+
+1. The user's available ingredients.
+2. Preparing/chopping the ingredients.
+3. Cooking the ingredients.
+4. Adding spices/seasoning.
+5. Final cooking process.
+6. Plating the finished dish.
+
+The video should follow the selected recipe and should NOT randomly demonstrate unrelated ingredients.
+
+---
+
+## VIDEO PROMPT GENERATION
+
+Create an AI video prompt automatically from:
+
+* Recipe name
+* User's available ingredients
+* Missing ingredients
+* Cooking steps
+* Cuisine
+* Cooking method
+
+Example generated internal prompt:
+
+"Create a realistic step-by-step cooking video demonstrating Potato Tomato Curry using potato, tomato, onion, green chilli, salt and oil. Show ingredient preparation, chopping, sautéing, cooking and final plating. Use a clean home kitchen environment and realistic food preparation."
+
+If the user changes ingredients, generate a recipe/video context based on the new ingredients.
+
+---
+
+## VIDEO FALLBACK
+
+Do NOT make the entire application dependent on an AI video API.
+
+If an AI video-generation service is unavailable:
+
+* Show a recipe step-by-step visual cooking guide.
+* Use recipe-related images/animations.
+* Display a "Video generation unavailable" friendly message.
+* Keep the complete recipe functionality working.
+
+Do not show a broken video player.
+
+---
+
+## VIDEO UI
+
+Inside the recipe details page add:
+
+🎥 **Watch Cooking Video**
+
+and optionally:
+
+✨ **Generate AI Cooking Video**
+
+Show:
+
+* Video preview
+* Play/Pause
+* Fullscreen
+* Recipe name
+* Ingredients used
+* Cooking duration
+
+Keep the video section visually prominent but don't make it mandatory for using the recipe.
