@@ -424,89 +424,260 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* ═════════════════════════════════════════════════════════════════════
-   AI VIDEO & VOICE ASSISTANT STYLING
+   AI COOKING THEATER & VISUAL STAGE
    ═════════════════════════════════════════════════════════════════════ */
-.video-media-panel {
-  width: 100%;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #111;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.12);
+.ai-cooking-theater {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+  background: #fffdf8;
+  border: 1px solid #e1e9df;
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(49, 93, 70, 0.05);
 }
 
-.video-embed-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  min-height: 220px;
-}
-
-.video-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: 18px;
-}
-
-.video-badge-header {
+.theater-stage {
   display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.ai-sparkle-pill {
-  display: inline-flex;
+.theater-screen {
+  position: relative;
+  height: 310px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #2e4d39, #1b3123);
+  display: flex;
   align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+}
+
+.theater-dish-art {
+  max-width: 175px;
+  max-height: 175px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5));
+  animation: dish-float 4s infinite ease-in-out;
+}
+
+@keyframes dish-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+}
+
+.steam-container {
+  position: absolute;
+  top: 36px;
+  display: flex;
+  gap: 22px;
+  pointer-events: none;
+}
+
+.steam {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.7);
+  animation: steam-rise 2.4s infinite ease-in-out;
+}
+
+.steam-2 { animation-delay: 0.7s; }
+.steam-3 { animation-delay: 1.4s; }
+
+@keyframes steam-rise {
+  0% { transform: translateY(12px) scale(0.8); opacity: 0; }
+  50% { opacity: 0.75; }
+  100% { transform: translateY(-38px) scale(1.35); opacity: 0; }
+}
+
+.theater-screen-header {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+}
+
+.live-cooking-badge {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.red-record-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e63946;
+  box-shadow: 0 0 8px #e63946;
+  animation: record-blink 1.2s infinite;
+}
+
+@keyframes record-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.theater-step-badge {
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  color: #fff;
   padding: 4px 10px;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #fce8db, #fbe0cc);
-  color: #b35626;
+  border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  border: 1px solid rgba(212, 118, 72, 0.25);
 }
 
-.duration-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: #647366;
+.theater-step-overlay {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  background: rgba(14, 29, 20, 0.86);
+  backdrop-filter: blur(12px);
+  padding: 13px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  z-index: 2;
 }
 
-.ai-chef-tip-card {
-  margin: 14px 0 18px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: #fbf5ea;
-  border: 1px solid #ebd8c0;
+.stage-step-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f29c6b;
+  letter-spacing: 0.08em;
+}
+
+.stage-step-title {
+  margin: 3px 0 2px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stage-step-desc {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.45;
+}
+
+.theater-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 3;
+}
+
+.theater-progress-fill {
+  height: 100%;
+  background: #d47648;
+  transition: width 0.3s ease;
+}
+
+.theater-controls-bar {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #4b3d2b;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.tip-spark {
-  font-size: 18px;
-  flex: 0 0 auto;
+.theater-playback-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #315d46;
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.tip-text strong {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #a45a2c;
-  margin-bottom: 2px;
+.theater-playback-btn:hover { background: #234835; }
+.theater-playback-btn svg { width: 16px; height: 16px; }
+
+.theater-step-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.voice-action-btn.speaking-active,
-.screen-speech-btn.is-talking {
+.theater-step-indicator {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4b5d4e;
+  padding: 0 4px;
+}
+
+.circle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #d4ded4;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #2e4d39;
+  transition: all 0.2s;
+}
+
+.circle-btn:hover:not(:disabled) {
+  background: #315d46;
+  color: #fff;
+  border-color: #315d46;
+}
+
+.circle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.circle-btn svg { width: 14px; height: 14px; }
+
+.theater-voice-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1.5px solid #d47648;
+  color: #d47648;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+
+.theater-voice-btn:hover {
+  background: #fdf5ef;
+}
+
+.theater-voice-btn.voice-active {
   background: #d47648 !important;
   color: #fff !important;
   animation: pulse-voice 1.5s infinite ease-in-out;
@@ -516,6 +687,179 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   0% { box-shadow: 0 0 0 0 rgba(212, 118, 72, 0.6); }
   70% { box-shadow: 0 0 0 10px rgba(212, 118, 72, 0); }
   100% { box-shadow: 0 0 0 0 rgba(212, 118, 72, 0); }
+}
+
+.theater-info-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.theater-info-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sparkle-tag {
+  background: #fbeee3;
+  color: #ba5723;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 118, 72, 0.2);
+}
+
+.cuisine-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #647366;
+}
+
+.theater-info-panel h3 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  color: #213f2d;
+}
+
+.theater-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #556658;
+}
+
+.ai-chef-tip-box {
+  background: #fbf5ea;
+  border: 1px solid #ebd8c0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b3d2b;
+}
+
+.tip-bulb {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.ai-chef-tip-box strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a45a2c;
+  margin-bottom: 2px;
+}
+
+.ai-chef-tip-box p {
+  margin: 0;
+}
+
+.theater-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.youtube-clean-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #e62117;
+  color: #fff !important;
+  text-decoration: none;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 14px rgba(230, 33, 23, 0.2);
+}
+
+.youtube-clean-btn:hover {
+  background: #cc1810;
+  transform: translateY(-1px);
+}
+
+.locate-stores-theater-btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 12px;
+  padding: 10px 14px;
+}
+
+/* Pantry Ready Badges & Cards */
+.match-badge-ready {
+  background: #e3f5e1 !important;
+  color: #1a6f2b !important;
+  border: 1px solid #bfe4ba;
+}
+
+.match-dot-ready {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #28a745;
+  margin-right: 4px;
+}
+
+.is-ready-card {
+  border: 1.5px solid #a8d5a7 !important;
+  background: #fbfefb !important;
+}
+
+.ready-note {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a6f2b;
+  margin: 4px 0 0;
+}
+
+.all-set-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a6f2b;
+  background: #eaf8e8;
+  padding: 6px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.all-set-pantry-card {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #eaf8e8;
+  border: 1px solid #c5ebd0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #1e5a2c;
+}
+
+.all-set-pantry-card strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.all-set-pantry-card p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.all-set-icon {
+  font-size: 26px;
+  flex: 0 0 auto;
 }
 
 .screen-controls-row {

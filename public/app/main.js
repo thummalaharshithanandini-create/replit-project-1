@@ -41,7 +41,7 @@ const state = {
   saved: new Set(Array.isArray(readStored(STORAGE.saved, [])) ? readStored(STORAGE.saved, []) : []),
   view: "explore",
   selectedRecipe: null,
-  guideVisible: false,
+  guideVisible: true,
   guideIndex: 0,
   guidePlaying: false,
   promptVisible: false,
@@ -288,39 +288,64 @@ function renderPantry() {
 }
 
 function renderRecipes() {
-  const ranked = RECIPES
-    .filter((recipe) => state.view !== "saved" || state.saved.has(recipe.id))
-    .map((recipe) => ({ recipe, match: getRecipeMatch(recipe) }))
-    .sort((a, b) => b.match.available.length - a.match.available.length || b.match.percent - a.match.percent);
+  // If user has NO ingredients selected in explore view, show prompt
+  if (state.view !== "saved" && state.ingredients.length === 0) {
+    $("#recipeHeading").textContent = t("recipeTitle");
+    $("#resultsNote").textContent = "0 recipes";
+    $("#emptyTitle").textContent = "What ingredients do you have in your kitchen?";
+    $("#emptyDescription").textContent = "Select what you have in your pantry above (or tap 'Try a sample pantry'). We will find what you can make with only those ingredients!";
+    $("#emptyState").hidden = false;
+    $("#recipeGrid").hidden = true;
+    return;
+  }
 
-  const shown = state.view === "saved"
-    ? ranked
-    : state.ingredients.length
-      ? ranked
-      : [];
+  // Strictly prioritize recipes based on what the user has!
+  const ranked = RECIPES
+    .filter((recipe) => {
+      if (state.view === "saved") {
+        return state.saved.has(recipe.id);
+      }
+      const match = getRecipeMatch(recipe);
+      // Strictly show recipes where user HAS at least 1 matching ingredient
+      return match.available.length > 0;
+    })
+    .map((recipe) => ({ recipe, match: getRecipeMatch(recipe) }))
+    .sort((a, b) => {
+      // 100% matches come first!
+      if (b.match.percent === 100 && a.match.percent !== 100) return 1;
+      if (a.match.percent === 100 && b.match.percent !== 100) return -1;
+      return b.match.percent - a.match.percent || b.match.available.length - a.match.available.length;
+    });
 
   $("#recipeHeading").textContent = t(state.view === "saved" ? "favoritesHeading" : "recipeTitle");
-  $("#resultsNote").textContent = t("resultsNote", { count: shown.length });
-  $("#emptyState").hidden = shown.length > 0;
-  $("#recipeGrid").hidden = shown.length === 0;
+  $("#resultsNote").textContent = t("resultsNote", { count: ranked.length });
+  $("#emptyState").hidden = ranked.length > 0;
+  $("#recipeGrid").hidden = ranked.length === 0;
 
-  if (!shown.length) return;
+  if (!ranked.length) return;
 
-  $("#recipeGrid").innerHTML = shown.map(({ recipe, match }) => {
+  $("#recipeGrid").innerHTML = ranked.map(({ recipe, match }) => {
     const text = recipeText(recipe);
     const isSaved = state.saved.has(recipe.id);
+    const is100Percent = match.missing.length === 0;
+
     const ingredientPills = match.available.slice(0, 4).map((item) =>
       `<span class="mini-ingredient">${escapeHtml(ingredientName(item, state.language))}</span>`
     ).join("");
     const moreCount = Math.max(0, match.available.length - 4);
-    const missingText = match.missing.length
-      ? `${escapeHtml(t("missingLabel"))}: ${escapeHtml(match.missing.slice(0, 2).map((item) => ingredientName(item, state.language)).join(", "))}${match.missing.length > 2 ? "…" : ""}`
-      : escapeHtml(t("availableLabel"));
 
-    return `<article class="recipe-card ${isSaved ? "is-favorite-card" : ""}">
+    const matchBadge = is100Percent
+      ? `<span class="match-badge match-badge-ready"><span class="match-dot-ready"></span>100% Ready to Cook</span>`
+      : `<span class="match-badge"><span class="match-dot"></span>${match.percent}% Match</span>`;
+
+    const statusNote = is100Percent
+      ? `<p class="ready-note">✨ You have all ingredients in your kitchen!</p>`
+      : `<p class="missing-note">${escapeHtml(t("missingLabel"))}: ${escapeHtml(match.missing.slice(0, 2).map((item) => ingredientName(item, state.language)).join(", "))}${match.missing.length > 2 ? "…" : ""}</p>`;
+
+    return `<article class="recipe-card ${isSaved ? "is-favorite-card" : ""} ${is100Percent ? "is-ready-card" : ""}">
       <div class="recipe-image-wrap">
         <img class="recipe-image" src="${recipe.image}" alt="${escapeHtml(text.name)}" loading="lazy" />
-        <span class="match-badge"><span class="match-dot"></span>${match.percent}% ${escapeHtml(t("match"))}</span>
+        ${matchBadge}
         <button class="save-button${isSaved ? " is-saved" : ""}" type="button" data-action="toggle-save" data-value="${recipe.id}" aria-label="${escapeHtml(t(isSaved ? "unsave" : "save"))}" aria-pressed="${isSaved}">
           <svg viewBox="0 0 24 24" fill="${isSaved ? "#d47648" : "none"}" stroke="${isSaved ? "#d47648" : "currentColor"}" aria-hidden="true"><path d="M12 20.2s-7.5-4.4-9.2-9.1C1.1 6.3 7.2 3.1 12 8c4.8-4.9 10.9-1.7 9.2 3.1-1.7 4.7-9.2 9.1-9.2 9.1Z" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </button>
@@ -330,22 +355,24 @@ function renderRecipes() {
           <span>${escapeHtml(text.cuisine)}</span>
           <span class="meta-dot">·</span>
           <span>${recipe.minutes} ${escapeHtml(t("minutes"))}</span>
-          ${recipe.videoEmbed ? `<span class="video-pill-mini">🎥 Video</span>` : ""}
+          <span class="video-pill-mini">🎥 AI Video</span>
         </div>
         <h3>${escapeHtml(text.name)}</h3>
         <p class="recipe-description">${escapeHtml(text.description)}</p>
         <div class="recipe-match-row">${ingredientPills}${moreCount ? `<span class="mini-ingredient more-count">+${moreCount}</span>` : ""}</div>
-        <p class="missing-note">${missingText}</p>
+        ${statusNote}
         <div class="recipe-card-actions">
           <button class="open-recipe-button" type="button" data-action="open-recipe" data-value="${recipe.id}">
             <span>${escapeHtml(t("detail"))}</span>
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          ${match.missing.length > 0 ? `
+          ${!is100Percent ? `
             <button class="card-map-btn" type="button" data-action="locate-missing-stores" data-value="${recipe.id}" title="${escapeHtml(t("locateMissingStores"))}">
-              🗺️ Find Missing
+              🗺️ Need ${match.missing.length} Item${match.missing.length > 1 ? "s" : ""}
             </button>
-          ` : ""}
+          ` : `
+            <span class="all-set-badge">✅ Cook Now</span>
+          `}
         </div>
       </div>
     </article>`;
@@ -362,112 +389,109 @@ function renderGuide(recipe) {
   state.currentPrompt = prompt;
 
   const currentStepText = `${currentStep[0]}. ${currentStep[1]}`;
+  const is100Percent = match.missing.length === 0;
+  const ytSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(text.name + " recipe cooking tutorial")}`;
 
   return `<section class="video-feature" aria-labelledby="guideHeading">
-    <div class="video-intro">
-      <div class="video-media-panel">
-        ${recipe.videoEmbed ? `
-          <div class="video-embed-container">
-            <iframe
-              src="${recipe.videoEmbed}?rel=0&modestbranding=1"
-              title="${escapeHtml(recipe.videoTitle || text.name)}"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="video-iframe">
-            </iframe>
+    <!-- Guaranteed Working In-App AI Cooking Theater -->
+    <div class="ai-cooking-theater">
+      <div class="theater-stage">
+        <div class="theater-screen">
+          <img src="${recipe.image}" alt="${escapeHtml(text.name)}" class="theater-dish-art" />
+          
+          <!-- Animated Steam & Visual Cooking Simulation -->
+          <div class="steam-container" aria-hidden="true">
+            <span class="steam steam-1">♨</span>
+            <span class="steam steam-2">♨</span>
+            <span class="steam steam-3">♨</span>
           </div>
-        ` : `
-          <div class="video-poster">
-            <img src="${recipe.image}" alt="" />
-            <div class="poster-shade"></div>
-            <span class="poster-play" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="m9 6 10 6-10 6V6Z" fill="currentColor"/></svg>
+
+          <!-- Video Stage Header Overlay -->
+          <div class="theater-screen-header">
+            <span class="live-cooking-badge">
+              <span class="red-record-dot"></span> AI COOKING STAGE
             </span>
-            <span class="poster-label">${escapeHtml(t("aiVideoBadge"))}</span>
-            <span class="poster-duration">${recipe.minutes} ${escapeHtml(t("minutes"))}</span>
+            <span class="theater-step-badge">
+              ${escapeHtml(t("step"))} ${safeIndex + 1} / ${steps.length}
+            </span>
           </div>
-        `}
+
+          <!-- Active Cooking Step Overlay Card -->
+          <div class="theater-step-overlay">
+            <span class="stage-step-tag">Step ${safeIndex + 1} of ${steps.length} · ${recipe.minutes}m Total</span>
+            <h4 class="stage-step-title">${escapeHtml(currentStep[0])}</h4>
+            <p class="stage-step-desc">${escapeHtml(currentStep[1])}</p>
+          </div>
+
+          <!-- Step Progress Bar -->
+          <div class="theater-progress-track">
+            <div class="theater-progress-fill" style="width: ${((safeIndex + 1) / steps.length) * 100}%"></div>
+          </div>
+        </div>
+
+        <!-- Player Controls Bar -->
+        <div class="theater-controls-bar">
+          <button class="theater-playback-btn ${state.guidePlaying ? "is-playing" : ""}" type="button" data-action="toggle-guide">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              ${state.guidePlaying 
+                ? '<path d="M7 5v10m6-10v10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' 
+                : '<path d="m7 4.5 9 5.5-9 5.5v-11Z" fill="currentColor"/>'}
+            </svg>
+            <span>${state.guidePlaying ? "Pause Guide" : "Auto-Play Guide"}</span>
+          </button>
+
+          <div class="theater-step-nav">
+            <button class="circle-btn" type="button" data-action="guide-prev" aria-label="Previous step" ${safeIndex === 0 ? "disabled" : ""}>
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H5m4 4-4-4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span class="theater-step-indicator">${safeIndex + 1} / ${steps.length}</span>
+            <button class="circle-btn" type="button" data-action="guide-next" aria-label="Next step" ${safeIndex === steps.length - 1 ? "disabled" : ""}>
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <!-- Voice Narration Button -->
+          <button class="theater-voice-btn ${state.isSpeaking ? "voice-active" : ""}" type="button" data-action="${state.isSpeaking ? "stop-voice" : "speak-step"}" data-text="${escapeHtml(currentStepText)}">
+            <span>${state.isSpeaking ? "⏹ Stop AI Voice" : "🔊 Listen to Step (AI Voice)"}</span>
+          </button>
+        </div>
       </div>
 
-      <div class="video-copy">
-        <div class="video-badge-header">
-          <span class="ai-sparkle-pill">✨ AI Video Assistant</span>
-          <span class="duration-badge">⏱️ ${recipe.minutes} ${escapeHtml(t("minutes"))}</span>
+      <!-- Video Details & Actions Panel -->
+      <div class="theater-info-panel">
+        <div class="theater-info-header">
+          <span class="sparkle-tag">✨ AI Smart Cooking Assistant</span>
+          <span class="cuisine-tag">${escapeHtml(text.cuisine)}</span>
         </div>
-        <h3 id="guideHeading">${escapeHtml(recipe.videoTitle || text.name)}</h3>
-        <p class="video-fallback-copy">${escapeHtml(text.description)}</p>
+        <h3 id="guideHeading">${escapeHtml(text.name)}</h3>
+        <p class="theater-desc">${escapeHtml(text.description)}</p>
 
         <!-- AI Chef Secret Tip Box -->
         ${recipe.aiTip ? `
-          <div class="ai-chef-tip-card">
-            <span class="tip-spark">💡</span>
-            <div class="tip-text">
+          <div class="ai-chef-tip-box">
+            <span class="tip-bulb">💡</span>
+            <div>
               <strong>${escapeHtml(t("aiChefTip"))}:</strong>
-              <span>${escapeHtml(recipe.aiTip)}</span>
+              <p>${escapeHtml(recipe.aiTip)}</p>
             </div>
           </div>
         ` : ""}
 
-        <div class="video-actions">
-          <button class="primary-button" type="button" data-action="watch-video">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4.5 9 5.5-9 5.5v-11Z" fill="currentColor"/></svg>
-            <span>Interactive Cooking Guide</span>
-          </button>
-          
-          <button class="secondary-button voice-action-btn ${state.isSpeaking ? "speaking-active" : ""}" type="button" data-action="${state.isSpeaking ? "stop-voice" : "speak-step"}" data-text="${escapeHtml(currentStepText)}">
-            <span>${state.isSpeaking ? "⏹ " + escapeHtml(t("aiVoiceStop")) : "🔊 " + escapeHtml(t("aiVoiceListen"))}</span>
-          </button>
+        <!-- Direct Actions -->
+        <div class="theater-actions">
+          <a href="${ytSearchUrl}" target="_blank" rel="noopener noreferrer" class="youtube-clean-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12c0 2 .2 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
+            <span>Watch Video on YouTube ↗</span>
+          </a>
 
-          ${match.missing.length > 0 ? `
-            <button class="secondary-button find-store-action-btn" type="button" data-action="locate-missing-stores" data-value="${recipe.id}">
-              <span>${escapeHtml(t("locateMissingStores"))}</span>
+          ${!is100Percent ? `
+            <button class="secondary-button locate-stores-theater-btn" type="button" data-action="locate-missing-stores" data-value="${recipe.id}">
+              🗺️ Find Missing (${match.missing.length}) on Map
             </button>
           ` : ""}
         </div>
       </div>
     </div>
-
-    <!-- Step Navigation Frame -->
-    ${state.guideVisible ? `
-      <div class="guide-player" id="guidePlayer">
-        <div class="guide-screen">
-          <img src="${recipe.image}" alt="" />
-          <div class="guide-overlay"></div>
-          <div class="guide-screen-top">
-            <span>${escapeHtml(text.name)}</span>
-            <div class="screen-btn-group">
-              <button class="screen-speech-btn ${state.isSpeaking ? "is-talking" : ""}" type="button" data-action="${state.isSpeaking ? "stop-voice" : "speak-step"}" data-text="${escapeHtml(currentStepText)}">
-                ${state.isSpeaking ? "⏹ Stop" : "🔊 Speak"}
-              </button>
-              <button type="button" data-action="fullscreen" aria-label="${escapeHtml(t("fullscreen"))}" title="${escapeHtml(t("fullscreen"))}">
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
-            </div>
-          </div>
-          <span class="guide-step-count">${escapeHtml(t("step"))} ${safeIndex + 1} ${escapeHtml(t("of"))} ${steps.length}</span>
-          <div class="guide-step-copy">
-            <span class="step-kicker">${escapeHtml(t("videoStepPrep"))} · ${String(safeIndex + 1).padStart(2, "0")}</span>
-            <h4>${escapeHtml(currentStep[0])}</h4>
-            <p>${escapeHtml(currentStep[1])}</p>
-          </div>
-          <div class="guide-progress"><span style="width:${((safeIndex + 1) / steps.length) * 100}%"></span></div>
-        </div>
-        <div class="guide-controls">
-          <button class="guide-play-button" type="button" data-action="toggle-guide" aria-label="${escapeHtml(t(state.guidePlaying ? "pauseGuide" : "startGuide"))}">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">${state.guidePlaying ? '<path d="M7 5v10m6-10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="m7 4.5 9 5.5-9 5.5v-11Z" fill="currentColor"/>'}</svg>
-          </button>
-          <div class="guide-step-label">${escapeHtml(currentStep[0])}<span>${safeIndex + 1} / ${steps.length}</span></div>
-          <div class="guide-step-buttons">
-            <button class="circle-button" type="button" data-action="guide-prev" aria-label="${escapeHtml(t("previousStep"))}" ${safeIndex === 0 ? "disabled" : ""}>
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H5m4 4-4-4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <button class="circle-button" type="button" data-action="guide-next" aria-label="${escapeHtml(t("nextStep"))}" ${safeIndex === steps.length - 1 ? "disabled" : ""}>
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    ` : ""}
 
     ${state.promptVisible ? `
       <div class="prompt-panel">
@@ -516,6 +540,8 @@ function renderDetails() {
   const text = recipeText(recipe);
   const match = getRecipeMatch(recipe);
   const isSaved = state.saved.has(recipe.id);
+  const is100Percent = match.missing.length === 0;
+
   const ingredientsHtml = recipe.ingredients.map((item) => {
     const available = state.ingredients.includes(item);
     return `<li class="${available ? "is-available" : "is-missing"}">
@@ -558,13 +584,23 @@ function renderDetails() {
             <span>${match.available.length}/${recipe.ingredients.length} in pantry</span>
           </div>
           <ul class="detail-ingredients">${ingredientsHtml}</ul>
-          ${match.missing.length > 0 ? `
+          
+          <!-- Only show missing grocery callout if ingredients are actually missing -->
+          ${!is100Percent ? `
             <div class="missing-store-cta">
               <button class="primary-button map-cta-btn" type="button" data-action="locate-missing-stores" data-value="${recipe.id}">
-                🗺️ Find Missing (${match.missing.map((m) => ingredientName(m, state.language)).join(", ")}) on Map
+                🗺️ Missing ${match.missing.map((m) => ingredientName(m, state.language)).join(", ")}? Find Stores on Map
               </button>
             </div>
-          ` : ""}
+          ` : `
+            <div class="all-set-pantry-card">
+              <span class="all-set-icon">🎉</span>
+              <div>
+                <strong>You have all ${recipe.ingredients.length} ingredients!</strong>
+                <p>No trip to the grocery store needed. You're ready to cook!</p>
+              </div>
+            </div>
+          `}
         </section>
         <section class="detail-block instructions-block">
           <div class="detail-block-heading"><h3>${escapeHtml(t("steps"))}</h3><span>${text.steps.length} ${escapeHtml(t("step"))}</span></div>
@@ -708,7 +744,7 @@ function loadSamplePantry() {
 
 function openRecipe(id) {
   state.selectedRecipe = id;
-  state.guideVisible = false;
+  state.guideVisible = true;
   state.promptVisible = false;
   state.guidePlaying = false;
   state.guideIndex = 0;
@@ -755,7 +791,7 @@ function toggleGuidePlayback() {
       state.guideIndex += 1;
     }
     renderDetails();
-  }, 4200);
+  }, 4500);
 }
 
 function moveGuide(amount) {
@@ -839,27 +875,10 @@ document.addEventListener("click", async (event) => {
     case "close-recipe":
       stopSpeaking();
       state.selectedRecipe = null;
-      state.guideVisible = false;
-      state.promptVisible = false;
       state.guidePlaying = false;
       window.clearInterval(guideTimer);
       render();
       $("#pantry").scrollIntoView({ behavior: "smooth", block: "start" });
-      break;
-    case "watch-video":
-      state.guideVisible = true;
-      state.guideIndex = 0;
-      state.guidePlaying = false;
-      renderDetails();
-      $("#guidePlayer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      break;
-    case "generate-video":
-      state.guideVisible = true;
-      state.guideIndex = 0;
-      state.guidePlaying = false;
-      state.promptVisible = true;
-      renderDetails();
-      $("#promptText")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       break;
     case "speak-step":
       speakStep(text);
@@ -874,7 +893,7 @@ document.addEventListener("click", async (event) => {
         state.view = "maps";
         render();
         const notice = $("#mapIngredientNotice");
-        if (notice) {
+        if (notice && match.missing.length > 0) {
           notice.hidden = false;
           $("#mapNoticeIngredients").textContent = match.missing.map((m) => ingredientName(m, state.language)).join(", ");
         }
@@ -912,17 +931,6 @@ document.addEventListener("click", async (event) => {
     case "copy-prompt":
       await copyPrompt();
       break;
-    case "fullscreen": {
-      const screen = $(".guide-screen");
-      if (screen?.requestFullscreen) {
-        try {
-          await screen.requestFullscreen();
-        } catch {
-          screen.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
-      break;
-    }
   }
 });
 
