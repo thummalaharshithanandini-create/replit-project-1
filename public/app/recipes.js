@@ -1,9 +1,12 @@
-export const SAMPLE_PANTRY = ["tomato", "onion", "potato", "chili", "salt", "oil"];
+export const SAMPLE_PANTRY = ["tomato", "onion", "potato", "chili", "salt", "oil", "cumin", "turmeric"];
 
 export const RECIPES = [
   {
     id: "tomato-potato-curry",
     image: "/assets/curry.svg",
+    videoEmbed: "https://www.youtube-nocookie.com/embed/qX8k3q_r78E",
+    videoTitle: "Aloo Tamatar Quick Curry Tutorial",
+    aiTip: "Gently crush a couple of cooked potato cubes with your spatula into the gravy — this thickens the curry naturally without needing extra cornflour or cream!",
     minutes: 30,
     servings: 2,
     ingredients: ["potato", "tomato", "onion", "chili", "oil", "salt", "turmeric", "cumin"],
@@ -85,6 +88,9 @@ export const RECIPES = [
   {
     id: "chickpea-spinach-bowl",
     image: "/assets/chickpea.svg",
+    videoEmbed: "https://www.youtube-nocookie.com/embed/yv3UqK5YQo0",
+    videoTitle: "Chole Palak Masala Cooking Guide",
+    aiTip: "Fold in the washed spinach leaves in the last 2 minutes and take off the heat — the residual steam will soften it while keeping vitamins and the emerald color intact!",
     minutes: 25,
     servings: 2,
     ingredients: ["chickpeas", "spinach", "onion", "tomato", "garlic", "cumin", "salt", "oil"],
@@ -166,6 +172,9 @@ export const RECIPES = [
   {
     id: "masala-omelette",
     image: "/assets/omelette.svg",
+    videoEmbed: "https://www.youtube-nocookie.com/embed/eH59U4n2X2Y",
+    videoTitle: "Crispy Fluffy Masala Omelette Walkthrough",
+    aiTip: "Whisk your eggs with a fork for a full 45 seconds to beat in tiny air pockets — this gives you an ultra fluffy texture without adding baking powder or milk!",
     minutes: 12,
     servings: 1,
     ingredients: ["egg", "onion", "tomato", "chili", "coriander", "salt", "oil"],
@@ -240,6 +249,90 @@ export const RECIPES = [
           ["പച്ചക്കറികൾ മൃദുവാക്കുക", "ചട്ടിയിൽ അല്പം എണ്ണ ചൂടാക്കുക. ഉള്ളിയും തക്കാളിയും ചേർത്ത് ചെറുതായി മൃദുവാകുന്നതുവരെ വേവിക്കുക."],
           ["ഓംലറ്റ് വേവിക്കുക", "മുട്ടമിശ്രിതം ഒഴിക്കുക. അരികുകൾ ഉറയ്ക്കുമ്പോൾ മെല്ലെ ഉയർത്തി വേവാത്ത മുട്ട അടിയിലേക്ക് ഒഴുകാൻ വിടുക."],
           ["മടക്കി വിളമ്പുക", "മുകളിൽ മിക്കവാറും ഉറച്ചാൽ ഓംലറ്റ് മടക്കുക. മുഴുവൻ വെന്തശേഷം ചൂടോടെ വിളമ്പുക."],
+        ],
+      },
+    },
+  },
+  {
+    id: "aloo-jeera-fry",
+    image: "/assets/curry.svg",
+    videoEmbed: "https://www.youtube-nocookie.com/embed/HwX-X_6k9Zk",
+    videoTitle: "Crispy Jeera Aloo Roast Step-by-Step",
+    aiTip: "Bloom cumin seeds on low-medium oil until golden brown. Don't let them turn dark black or they will taste bitter!",
+    minutes: 18,
+    servings: 2,
+    ingredients: ["potato", "cumin", "chili", "turmeric", "salt", "oil", "coriander"],
+    text: {
+      en: {
+        name: "Cumin spiced potatoes (Jeera Aloo)",
+        description: "Golden cubed potatoes pan-roasted with fragrant cumin seeds and earthy turmeric.",
+        cuisine: "North Indian homestyle",
+        method: "Crisp skillet roast",
+        steps: [
+          ["Chop and boil potatoes", "Cut potatoes into even bite-sized cubes. Parboil or microwave for 4 minutes until just fork tender."],
+          ["Bloom the cumin", "Heat oil in a wide skillet. Add cumin seeds and sliced green chilies; let them sizzle for 30 seconds."],
+          ["Roast the potatoes", "Toss in the potatoes, turmeric, and salt. Cook uncovered on medium flame until edges turn golden and crisp."],
+          ["Garnish and enjoy", "Turn off the stove, sprinkle freshly chopped coriander, and serve hot with rotis or rice."],
+        ],
+      },
+      te: {
+        name: "జీలకర్ర బంగాళాదుంప వేపుడు",
+        description: "సువాసనగల జీలకర్ర, పసుపుతో బంగారు రంగులో వేయించిన కరకరలాడే బంగాళాదుంప ముక్కలు.",
+        cuisine: "భారతీయ ఇంటి వంట",
+        method: "పాన్‌పై కరకరలాడేలా వేయించడం",
+        steps: [
+          ["దుంపలను ముక్కలు చేయండి", "బంగాళాదుంపలను సమాన ముక్కలుగా తరిగి కాసేపు ఉడికించండి."],
+          ["జీలకర్రను వేయించండి", "పాన్‌లో నూనె వేడి చేసి జీలకర్ర, పచ్చిమిర్చి వేసి చిటపటలాడే వరకు వేయించండి."],
+          ["బంగాళాదుంపలను వేయించండి", "బంగాళాదుంపలు, పసుపు, ఉప్పు వేసి అంచులు ఎర్రగా మారే వరకు వేయించండి."],
+          ["కొత్తిమీరతో వడ్డించండి", "కొత్తిమీర చల్లి వేడిగా అన్నం లేదా చపాతీతో వడ్డించండి."],
+        ],
+      },
+      hi: {
+        name: "जीरा आलू रोस्ट",
+        description: "खुशबूदार जीरा और हल्दी के साथ कुरकुरा भुना हुआ स्वादिष्ट आलू।",
+        cuisine: "उत्तर भारतीय घरेलू स्वाद",
+        method: "कड़ाही में कुरकुरा भूनना",
+        steps: [
+          ["आलू काटें और उबालें", "आलू को छोटे टुकड़ों में काटकर हल्का उबाल लें।"],
+          ["जीरा तड़काएँ", "कड़ाही में तेल गरम करें, जीरा और हरी मिर्च डालकर तड़काएँ।"],
+          ["आलू भूनें", "आलू, हल्दी और नमक डालकर धीमी आँच पर सुनहरा होने तक भूनें।"],
+          ["धनिया डालकर परोसें", "ऊपर से हरा धनिया डालकर गरमा-गरम परोसें।"],
+        ],
+      },
+      ta: {
+        name: "சீரக உருளைக்கிழங்கு வறுவல்",
+        description: "நறுமணமுள்ள சீரகம், மஞ்சள் சேர்த்து பொன்னிறமாக வறுத்த சுவையான உருளைக்கிழங்கு.",
+        cuisine: "இந்திய வீட்டு சமையல்",
+        method: "கடாயில் மொறுமொறுப்பாக வறுத்தல்",
+        steps: [
+          ["உருளைக்கிழங்கை வேகவையுங்கள்", "உருளைக்கிழங்கை துண்டுகளாக்கி முக்கால் பதம் வேகவைக்கவும்."],
+          ["சீரகம் வதக்குங்கள்", "எண்ணெயில் சீரகம், பச்சை மிளகாய் சேர்த்து தாளிக்கவும்."],
+          ["உருளைக்கிழங்கை வறுக்கவும்", "உருளைக்கிழங்கு, மஞ்சள், உப்பு சேர்த்து பொன்னிறமாகும் வரை வறுக்கவும்."],
+          ["கொத்தமல்லி தூவி பரிமாறுங்கள்", "கொத்தமல்லி தழை தூவி சூடாகப் பரிமாறவும்."],
+        ],
+      },
+      kn: {
+        name: "ಜೀರಿಗೆ ಆಲೂಗಡ್ಡೆ ರೋಸ್ಟ್",
+        description: "ಸುವಾಸನೆಯುಕ್ತ ಜೀರಿಗೆ ಮತ್ತು ಅರಿಶಿನದೊಂದಿಗೆ ಹುರಿದ ಗರಿಗರಿಯಾದ ಆಲೂಗಡ್ಡೆ.",
+        cuisine: "ಭಾರತೀಯ ಮನೆ ಅಡುಗೆ",
+        method: "ಬಾಣಲೆಯಲ್ಲಿ ಗರಿಗರಿಯಾಗಿ ಹುರಿಯುವುದು",
+        steps: [
+          ["ಆಲೂಗಡ್ಡೆ ಸಿದ್ಧಪಡಿಸಿ", "ಆಲೂಗಡ್ಡೆ ತುಂಡು ಮಾಡಿ ಸ್ವಲ್ಪ ಬೇಯಿಸಿಕೊಳ್ಳಿ."],
+          ["ಜೀರಿಗೆ ಒಗ್ಗರಣೆ ಹಾಕಿ", "ಎಣ್ಣೆಯಲ್ಲಿ ಜೀರಿಗೆ, ಹಸಿಮೆಣಸಿನಕಾಯಿ ಹಾಕಿ ಹುರಿಯಿರಿ."],
+          ["ಆಲೂಗಡ್ಡೆ ಹುರಿಯಿರಿ", "ಆಲೂಗಡ್ಡೆ, ಅರಿಶಿನ ಮತ್ತು ಉಪ್ಪು ಸೇರಿಸಿ ಚಿನ್ನದ ಬಣ್ಣ ಬರುವವರೆಗೆ ಹುರಿಯಿರಿ."],
+          ["ಕೊತ್ತಂಬರಿ ಹಾಕಿ ಬಡಿಸಿ", "ಕೊತ್ತಂಬರಿ ಸೊಪ್ಪು ಉದುರಿಸಿ ಬಿಸಿಯಾಗಿ ಬಡಿಸಿ."],
+        ],
+      },
+      ml: {
+        name: "ജീരക ഉരുളക്കിഴങ്ങ് റോസ്റ്റ്",
+        description: "ജീരകവും മഞ്ഞളും ചേർത്ത് മൊരിയിച്ചെടുത്ത ഉരുളക്കിഴങ്ങ്.",
+        cuisine: "ഇന്ത്യൻ വീട്ടുപാചകം",
+        method: "ചട്ടിയിൽ മൊരിയിച്ചെടുക്കൽ",
+        steps: [
+          ["ഉരുളക്കിഴങ്ങ് വേവിക്കുക", "ഉരുളക്കിഴങ്ങ് കഷണങ്ങളാക്കി പകുതി വേവിക്കുക."],
+          ["ജീരകം മൂപ്പിക്കുക", "എണ്ണയിൽ ജീരകവും പച്ചമുളകും ചേർത്ത് മൂപ്പിക്കുക."],
+          ["ഉരുളക്കിഴങ്ങ് വറുക്കുക", "ഉരുളക്കിഴങ്ങ്, മഞ്ഞൾ, ഉപ്പ് എന്നിവ ചേർത്ത് മൊരിയുന്നതുവരെ വറുക്കുക."],
+          ["മല്ലിയില ചേർത്ത് വിളമ്പുക", "മല്ലിയില വിതറി ചൂടോടെ വിളമ്പുക."],
         ],
       },
     },

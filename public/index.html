@@ -8,6 +8,8 @@
     <title>Rasoi — Cook with what you have</title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="/app/main.js"></script>
   </head>
   <body>
@@ -32,6 +34,9 @@
           <button class="nav-link" id="navSaved" type="button" data-view="saved">
             <span id="navSavedText"></span>
             <span class="saved-count" id="savedCount">0</span>
+          </button>
+          <button class="nav-link" id="navMaps" type="button" data-view="maps">
+            <span id="navMapsText"></span>
           </button>
         </nav>
 
@@ -149,6 +154,75 @@
               <button class="secondary-button" id="emptySampleButton" type="button"></button>
             </div>
           </section>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════
+             NATIVE GROCERY STORES & MAPS LOCATOR
+             ═══════════════════════════════════════════════ -->
+        <section class="maps-section" id="mapsSection" hidden>
+          <div class="maps-header-bar">
+            <div class="section-heading">
+              <span class="section-number">03</span>
+              <div>
+                <p class="eyebrow" id="mapsEyebrow"></p>
+                <h2 id="mapsTitle"></h2>
+              </div>
+            </div>
+            <p class="panel-description" id="mapsDescription"></p>
+          </div>
+
+          <div class="maps-controls">
+            <div class="map-search-row">
+              <div class="input-row search-row map-input-wrap">
+                <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.4" stroke="currentColor" stroke-width="1.5"/><path d="m12.8 12.8 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <input id="mapCitySearch" type="search" autocomplete="off" maxlength="80" />
+              </div>
+              <button class="primary-button map-search-btn" id="mapSearchBtn" type="button">
+                <span id="mapSearchBtnText">Search</span>
+              </button>
+              <button class="secondary-button map-gps-btn" id="mapGpsBtn" type="button" title="Use current GPS location">
+                <span id="useGpsText">📍 My GPS</span>
+              </button>
+            </div>
+
+            <div class="quick-places-wrap">
+              <span class="quick-places-label" id="popularCitiesLabel">Quick Native Place:</span>
+              <div class="quick-city-chips" id="quickCityChips"></div>
+            </div>
+
+            <div class="store-filter-group" id="storeFilterGroup" role="group">
+              <button class="filter-chip active" type="button" data-filter="all">All Stores</button>
+              <button class="filter-chip" type="button" data-filter="indian">Indian &amp; Desi Groceries 🇮🇳</button>
+              <button class="filter-chip" type="button" data-filter="fresh">Fresh Vegetable Mandi 🥬</button>
+              <button class="filter-chip" type="button" data-filter="supermarket">Supermarkets 🛒</button>
+            </div>
+
+            <div class="map-active-note" id="mapIngredientNotice" hidden>
+              <div class="notice-content">
+                <span class="notice-badge">Ingredients Needed:</span>
+                <span id="mapNoticeIngredients"></span>
+              </div>
+              <button class="quiet-button reset-notice-btn" id="clearMapNotice" type="button" aria-label="Clear notice">✕</button>
+            </div>
+          </div>
+
+          <div class="map-layout">
+            <div class="map-canvas-card">
+              <div id="storeMap" class="store-map-frame" aria-label="Interactive grocery store map"></div>
+              <div class="map-overlay-info">
+                <span class="active-city-badge" id="activeCityBadge">📍 Hyderabad</span>
+                <span class="stores-count-badge" id="storesCountBadge">Nearby Stores</span>
+              </div>
+            </div>
+
+            <div class="store-directory-panel">
+              <div class="directory-heading">
+                <h3>Stores Near You</h3>
+                <span class="directory-sub">Click any store or marker to open driving &amp; walking directions in Google Maps</span>
+              </div>
+              <div class="store-cards-list" id="storeCardsList"></div>
+            </div>
+          </div>
         </section>
 
         <section class="detail-section" id="recipeDetails" hidden></section>
