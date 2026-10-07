@@ -643,6 +643,22 @@ export const INGREDIENT_LABELS = {
     en: "Coriander", te: "కొత్తిమీర", hi: "धनिया", ta: "கொத்தமல்லி", kn: "ಕೊತ್ತಂಬರಿ", ml: "മല്ലിയില",
     aliases: ["coriander", "cilantro", "కొత్తిమీర", "धनिया", "கொத்தமல்லி", "ಕೊತ್ತಂಬರಿ", "ಮಲ್ಲಿಗೆ ಸೊಪ್ಪು", "മല്ലിയില"],
   },
+  rice: {
+    en: "Rice", te: "బియ్యం / అన్నం", hi: "चावल", ta: "அரிசி / சாதம்", kn: "ಅಕ್ಕಿ / ಅನ್ನ", ml: "അരി / ചോറ്",
+    aliases: ["rice", "cooked rice", "chawal", "biyyam", "annam", "sadham", "sadam", "arisi", "akki"],
+  },
+  lentils: {
+    en: "Lentils (Dal)", te: "పప్పు (కంది/పెసర)", hi: "दाल", ta: "பருப்பு", kn: "ಬೇಳೆ", ml: "പരിപ്പ്",
+    aliases: ["lentils", "dal", "daal", "pappu", "paruppu", "bele", "parippu", "toor dal", "moong dal"],
+  },
+  paneer: {
+    en: "Paneer", te: "పనీర్", hi: "पनीर", ta: "பன்னீர்", kn: "ಪನೀರ್", ml: "പനീർ",
+    aliases: ["paneer", "cottage cheese", "panir"],
+  },
+  lemon: {
+    en: "Lemon", te: "నిమ్మకాయ", hi: "नींबू", ta: "எலுமிச்சை", kn: "ನಿಂಬೆಹಣ್ಣು", ml: "നാരങ്ങ",
+    aliases: ["lemon", "lime", "nimbu", "nimmakaya", "elumichai", "nimbehannu", "naranga"],
+  },
 };
 
 export function normalizeIngredient(value) {

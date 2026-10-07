@@ -40,13 +40,27 @@
           </button>
         </nav>
 
-        <label class="language-control">
-          <span class="language-icon" aria-hidden="true">
-            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.4"/><path d="M2.8 10h14.4M10 2.6c1.9 2 2.8 4.5 2.8 7.4s-.9 5.4-2.8 7.4c-1.9-2-2.8-4.5-2.8-7.4S8.1 4.6 10 2.6Z"/></svg>
-          </span>
-          <span class="sr-only" id="languageLabel"></span>
-          <select id="languageSelect" aria-label="Language"></select>
-        </label>
+        <div class="topbar-actions">
+          <label class="language-control">
+            <span class="language-icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.4"/><path d="M2.8 10h14.4M10 2.6c1.9 2 2.8 4.5 2.8 7.4s-.9 5.4-2.8 7.4c-1.9-2-2.8-4.5-2.8-7.4S8.1 4.6 10 2.6Z"/></svg>
+            </span>
+            <span class="sr-only" id="languageLabel"></span>
+            <select id="languageSelect" aria-label="Language"></select>
+          </label>
+
+          <div class="auth-control-area">
+            <button class="nav-auth-btn" id="navLoginBtn" type="button">
+              <span class="auth-icon" aria-hidden="true">🔑</span>
+              <span id="navLoginText">Sign In</span>
+            </button>
+            <div class="nav-user-pill" id="navUserPill" hidden>
+              <span class="user-avatar" aria-hidden="true">👨‍🍳</span>
+              <span class="user-name-label" id="navUserName">Chef</span>
+              <button class="nav-logout-btn" id="navLogoutBtn" type="button" title="Sign out" aria-label="Sign out">↩</button>
+            </div>
+          </div>
+        </div>
       </header>
 
       <main>
@@ -232,6 +246,85 @@
         <span class="footer-brand">rasoi <span>·</span> <span id="footerCopy"></span></span>
         <span class="footer-note" id="footerNote"></span>
       </footer>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         LOGIN MODAL (Strict 4-Character Password/PIN)
+         ═══════════════════════════════════════════════ -->
+    <div class="modal-backdrop" id="loginModalBackdrop" hidden>
+      <div class="login-modal-card" id="loginModalCard" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <button class="modal-close-btn" id="closeLoginModal" type="button" aria-label="Close dialog">✕</button>
+
+        <div class="login-header">
+          <div class="login-badge-icon" aria-hidden="true">👨‍🍳</div>
+          <h2 id="loginTitle">Welcome to Rasoi</h2>
+          <p class="login-subtitle">Sign in with your username and 4-character secret password.</p>
+        </div>
+
+        <div id="loginFormState">
+          <form class="login-form" id="loginForm" autocomplete="on">
+            <div class="form-group">
+              <label for="loginUsername" class="form-label">
+                <span>Username</span>
+                <span class="required-tag">Required</span>
+              </label>
+              <div class="input-wrap">
+                <span class="input-icon" aria-hidden="true">👤</span>
+                <input id="loginUsername" type="text" placeholder="Enter username (e.g. chef, harshitha)" autocomplete="username" maxlength="30" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword" class="form-label">
+                <span>4-Character Password / PIN</span>
+                <span class="pin-rule-tag" id="pinRuleTag">Exact 4 chars</span>
+              </label>
+              <div class="input-wrap password-input-wrap">
+                <span class="input-icon" aria-hidden="true">🔒</span>
+                <input id="loginPassword" type="password" placeholder="••••" maxlength="4" autocomplete="current-password" required />
+                <button type="button" class="toggle-password-btn" id="togglePasswordBtn" title="Show/Hide password" aria-label="Toggle password visibility">👁️</button>
+              </div>
+
+              <!-- Live 4-character visual progress tracker -->
+              <div class="pin-tracker">
+                <div class="pin-dots" id="pinDots" aria-hidden="true">
+                  <span class="pin-dot" id="dot-0"></span>
+                  <span class="pin-dot" id="dot-1"></span>
+                  <span class="pin-dot" id="dot-2"></span>
+                  <span class="pin-dot" id="dot-3"></span>
+                </div>
+                <span class="pin-counter-text" id="pinCounterText">0 / 4 characters</span>
+              </div>
+              <p class="pin-hint-msg" id="pinHintMsg">Password must be exactly 4 characters.</p>
+            </div>
+
+            <div class="login-error-alert" id="loginErrorAlert" hidden></div>
+
+            <button type="submit" class="primary-button login-submit-btn" id="loginSubmitBtn">
+              Sign In 🚀
+            </button>
+          </form>
+
+          <div class="quick-demo-login-box">
+            <span class="demo-divider">QUICK DEMO ACCESS</span>
+            <button type="button" class="demo-auto-btn" id="quickDemoLoginBtn">
+              ⚡ Instant Demo Sign In (chef / 1234)
+            </button>
+          </div>
+        </div>
+
+        <div id="loggedInState" hidden>
+          <div class="logged-in-card">
+            <div class="profile-avatar-large" aria-hidden="true">👨‍🍳</div>
+            <h3>Signed in as <span id="loggedInUsernameDisplay"></span></h3>
+            <p class="profile-meta" id="loggedInMetaText">Your favorite recipes and kitchen pantry preferences are active.</p>
+            <div class="profile-actions">
+              <button class="primary-button" id="modalExploreBtn" type="button">Explore Recipes 🍲</button>
+              <button class="quiet-button modal-logout-btn" id="modalLogoutBtn" type="button">Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

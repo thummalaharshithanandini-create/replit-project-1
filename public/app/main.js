@@ -7,6 +7,7 @@ const STORAGE = {
   ingredients: "rasoi-ingredients",
   saved: "rasoi-saved-recipes",
   deviceId: "rasoi-device-id",
+  userSession: "rasoi-user-session",
 };
 
 function readStored(key, fallback) {
@@ -33,12 +34,14 @@ function getDeviceId() {
 
 const storedIngredients = readStored(STORAGE.ingredients, null);
 const initialLanguage = readStored(STORAGE.language, "en");
+const storedUser = readStored(STORAGE.userSession, null);
 const state = {
   language: LANGUAGES.some(({ code }) => code === initialLanguage) ? initialLanguage : "en",
   ingredients: Array.isArray(storedIngredients) ? storedIngredients.slice(0, 20) : [],
   isDemo: false,
   ingredientQuery: "",
   saved: new Set(Array.isArray(readStored(STORAGE.saved, [])) ? readStored(STORAGE.saved, []) : []),
+  currentUser: storedUser && typeof storedUser.username === "string" ? storedUser : null,
   view: "explore",
   selectedRecipe: null,
   guideVisible: true,
@@ -694,6 +697,7 @@ function renderStoreCards() {
 function render() {
   renderLanguageOptions();
   renderStaticCopy();
+  renderAuthState();
 
   const isMaps = state.view === "maps";
   $("#pantry").hidden = isMaps;
@@ -1065,6 +1069,234 @@ async function initializeCloudSync() {
     $("#syncLabel").textContent = t("syncLocal");
   }
 }
+
+// ═══════════════════════════════════════════════
+// AUTHENTICATION & LOGIN CONTROLLER (Strict 4-Char PIN)
+// ═══════════════════════════════════════════════
+function renderAuthState() {
+  const loginBtn = $("#navLoginBtn");
+  const userPill = $("#navUserPill");
+  const userNameLabel = $("#navUserName");
+  if (!loginBtn || !userPill) return;
+
+  if (state.currentUser) {
+    loginBtn.hidden = true;
+    userPill.hidden = false;
+    if (userNameLabel) userNameLabel.textContent = state.currentUser.username;
+  } else {
+    loginBtn.hidden = false;
+    userPill.hidden = true;
+  }
+}
+
+function openLoginModal() {
+  const backdrop = $("#loginModalBackdrop");
+  if (!backdrop) return;
+  backdrop.hidden = false;
+
+  const formState = $("#loginFormState");
+  const loggedInState = $("#loggedInState");
+  const errorAlert = $("#loginErrorAlert");
+  if (errorAlert) {
+    errorAlert.hidden = true;
+    errorAlert.textContent = "";
+  }
+
+  if (state.currentUser) {
+    if (formState) formState.hidden = true;
+    if (loggedInState) loggedInState.hidden = false;
+    const nameDisplay = $("#loggedInUsernameDisplay");
+    if (nameDisplay) nameDisplay.textContent = state.currentUser.username;
+    const metaDisplay = $("#loggedInMetaText");
+    if (metaDisplay) {
+      metaDisplay.textContent = `${state.saved.size} favorite recipe${state.saved.size === 1 ? "" : "s"} saved in your profile.`;
+    }
+  } else {
+    if (formState) formState.hidden = false;
+    if (loggedInState) loggedInState.hidden = true;
+    const pwdInput = $("#loginPassword");
+    if (pwdInput) {
+      pwdInput.value = "";
+      updatePinTracker("");
+    }
+    const userInput = $("#loginUsername");
+    if (userInput) {
+      setTimeout(() => userInput.focus(), 80);
+    }
+  }
+}
+
+function closeLoginModal() {
+  const backdrop = $("#loginModalBackdrop");
+  if (backdrop) backdrop.hidden = true;
+  const errorAlert = $("#loginErrorAlert");
+  if (errorAlert) errorAlert.hidden = true;
+}
+
+function updatePinTracker(val) {
+  const password = typeof val === "string" ? val : ($("#loginPassword")?.value || "");
+  const len = password.length;
+
+  for (let i = 0; i < 4; i++) {
+    const dot = $(`#dot-${i}`);
+    if (dot) {
+      if (i < len) {
+        dot.classList.add("filled");
+      } else {
+        dot.classList.remove("filled");
+      }
+    }
+  }
+
+  const counterText = $("#pinCounterText");
+  const hintMsg = $("#pinHintMsg");
+  const ruleTag = $("#pinRuleTag");
+
+  if (counterText) {
+    counterText.textContent = `${len} / 4 characters`;
+  }
+
+  if (len === 0) {
+    if (hintMsg) {
+      hintMsg.textContent = "Password must be exactly 4 characters.";
+      hintMsg.className = "pin-hint-msg";
+    }
+    if (ruleTag) {
+      ruleTag.textContent = "Exact 4 chars";
+      ruleTag.className = "pin-rule-tag";
+    }
+  } else if (len < 4) {
+    const remaining = 4 - len;
+    if (hintMsg) {
+      hintMsg.textContent = `${remaining} more character${remaining === 1 ? "" : "s"} needed.`;
+      hintMsg.className = "pin-hint-msg pin-hint-warning";
+    }
+    if (ruleTag) {
+      ruleTag.textContent = `${len}/4 chars`;
+      ruleTag.className = "pin-rule-tag pin-tag-pending";
+    }
+  } else if (len === 4) {
+    if (hintMsg) {
+      hintMsg.textContent = "✓ Exactly 4 characters! Ready to sign in.";
+      hintMsg.className = "pin-hint-msg pin-hint-valid";
+    }
+    if (ruleTag) {
+      ruleTag.textContent = "✓ 4 chars verified";
+      ruleTag.className = "pin-rule-tag pin-tag-valid";
+    }
+  }
+}
+
+function handleLogin(username, password) {
+  const cleanUser = (username || "").trim();
+  const cleanPass = (password || "").trim();
+  const errorAlert = $("#loginErrorAlert");
+
+  if (!cleanUser) {
+    if (errorAlert) {
+      errorAlert.textContent = "⚠️ Please enter your username.";
+      errorAlert.hidden = false;
+    }
+    return;
+  }
+
+  if (cleanPass.length !== 4) {
+    if (errorAlert) {
+      errorAlert.textContent = `⚠️ Password must be exactly 4 characters (currently ${cleanPass.length}).`;
+      errorAlert.hidden = false;
+    }
+    return;
+  }
+
+  // Valid credentials
+  if (errorAlert) errorAlert.hidden = true;
+  state.currentUser = {
+    username: cleanUser,
+    loggedInAt: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(STORAGE.userSession, JSON.stringify(state.currentUser));
+  } catch {}
+
+  renderAuthState();
+  closeLoginModal();
+  showToast(`Welcome back, Chef ${cleanUser}! 👨‍🍳`);
+}
+
+function handleLogout() {
+  state.currentUser = null;
+  try {
+    localStorage.removeItem(STORAGE.userSession);
+  } catch {}
+
+  renderAuthState();
+  closeLoginModal();
+  showToast("You have signed out successfully.");
+}
+
+// Auth Event Listeners
+$("#navLoginBtn")?.addEventListener("click", openLoginModal);
+$("#navUserPill")?.addEventListener("click", openLoginModal);
+$("#closeLoginModal")?.addEventListener("click", closeLoginModal);
+$("#loginModalBackdrop")?.addEventListener("click", (event) => {
+  if (event.target === $("#loginModalBackdrop")) {
+    closeLoginModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#loginModalBackdrop")?.hidden) {
+    closeLoginModal();
+  }
+});
+
+$("#loginPassword")?.addEventListener("input", (event) => {
+  updatePinTracker(event.target.value);
+  const errorAlert = $("#loginErrorAlert");
+  if (errorAlert && !errorAlert.hidden && event.target.value.length === 4) {
+    errorAlert.hidden = true;
+  }
+});
+
+$("#togglePasswordBtn")?.addEventListener("click", () => {
+  const pwdInput = $("#loginPassword");
+  const toggleBtn = $("#togglePasswordBtn");
+  if (pwdInput) {
+    const isPass = pwdInput.type === "password";
+    pwdInput.type = isPass ? "text" : "password";
+    if (toggleBtn) toggleBtn.textContent = isPass ? "🙈" : "👁️";
+  }
+});
+
+$("#loginForm")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const user = $("#loginUsername")?.value || "";
+  const pass = $("#loginPassword")?.value || "";
+  handleLogin(user, pass);
+});
+
+$("#quickDemoLoginBtn")?.addEventListener("click", () => {
+  const userInput = $("#loginUsername");
+  const pwdInput = $("#loginPassword");
+  if (userInput) userInput.value = "chef";
+  if (pwdInput) pwdInput.value = "1234";
+  updatePinTracker("1234");
+  handleLogin("chef", "1234");
+});
+
+$("#navLogoutBtn")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  handleLogout();
+});
+
+$("#modalLogoutBtn")?.addEventListener("click", handleLogout);
+$("#modalExploreBtn")?.addEventListener("click", () => {
+  closeLoginModal();
+  state.view = "explore";
+  render();
+  $("#recipeHeading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 render();
 initializeCloudSync();
